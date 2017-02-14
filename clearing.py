@@ -6,8 +6,11 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import argparse
+import os
+import cv2
+import numpy as np
+import shutil
 
-import re
 from PIL import Image
 from pytesseract import pytesseract
 
@@ -21,14 +24,25 @@ if __name__ == '__main__':
     parser.add_argument("-i", required=True, help="Path to the file where the clearing pictures are stored")
     args = parser.parse_args()
 
-    for
+    if os.path.exists('tmp'):
+        shutil.rmtree("tmp")
+    os.mkdir('tmp')
 
-    print("STEP 1: Apply OCR to extract strings from the receipt")
-    receipt_str = pytesseract.image_to_string(Image.open(args.i))
-    print(receipt_str)
-    print("STEP 2: Extract all float numbers through regex matching")
-    num_str_on_receipt = re.findall("\d+\.\d+", receipt_str)
-    num_on_receipt = [float(s) for s in num_str_on_receipt]
-    print(num_on_receipt)
-    print("STEP 3: Conclusion")
-    print("Your spending on this transaction is {} USD".format(max(num_on_receipt)))
+    for f in os.listdir(args.i):
+        if f.split('.')[-1] == 'jpeg':
+            img = cv2.imread(os.path.join(args.i, f))
+            b = img[:, :, 0]
+            g = img[:, :, 1]
+            r = img[:, :, 2]
+            height, width = r.shape
+            processed_img = np.ones((height, width)) * 255
+            for i in range(height):
+                for j in range(width):
+                    if r[i, j] == g[i, j] == b[i, j] and r[i, j] < 230:
+                        img[i, j, :] = 0
+            cv2.imwrite(os.path.join("tmp", f), img)
+
+            print("processing file {}".format(f))
+            img = Image.open(os.path.join('tmp', f))
+            clearing_str = pytesseract.image_to_string(img, lang='chi_sim')
+            print(clearing_str)
