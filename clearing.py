@@ -30,7 +30,6 @@ if __name__ == '__main__':
     if os.path.exists('tmp'):
         shutil.rmtree("tmp")
     os.mkdir('tmp')
-    week_book = defaultdict(lambda: 0)
 
     for f in os.listdir(args.i):
         if f.split('.')[-1] == 'jpeg':
