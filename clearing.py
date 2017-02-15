@@ -13,6 +13,9 @@ import shutil
 
 from PIL import Image
 from pytesseract import pytesseract
+import yaml
+
+from collections import defaultdict
 
 __author__ = 'Ziqin (Shaun) Rong'
 __version__ = '0.1'
@@ -27,6 +30,7 @@ if __name__ == '__main__':
     if os.path.exists('tmp'):
         shutil.rmtree("tmp")
     os.mkdir('tmp')
+    week_book = defaultdict(lambda: 0)
 
     for f in os.listdir(args.i):
         if f.split('.')[-1] == 'jpeg':
@@ -45,4 +49,35 @@ if __name__ == '__main__':
             print("processing file {}".format(f))
             img = Image.open(os.path.join('tmp', f))
             clearing_str = pytesseract.image_to_string(img, lang='chi_sim')
-            print(clearing_str)
+            # print(clearing_str)
+            str_l = clearing_str.splitlines()
+
+            game_book = {}
+            zero_l_num = None
+            for l_num, line in enumerate(str_l):
+                line = line.decode('utf-8')
+                line_l = line.split()
+                if "买入" in line_l:
+                    player = " ".join(line_l[:line_l.index("买入")]).encode("utf-8")
+                    pnl = "".join(line_l[line_l.index("买入") + 2:]).encode("utf-8")
+                    # print(pnl)
+                    if pnl == "0" or pnl == 'O' or pnl == 'o':
+                        pnl = 0
+                        zero_l_num = l_num
+                    elif pnl[0] == "+":
+                        pnl = int(pnl[1:])
+                    elif pnl[0] == "-" or pnl[0] == "_":
+                        pnl = -1 * int(pnl[1:])
+                    elif l_num > zero_l_num:
+                        pnl = -1 * int(pnl[1:])
+
+                    if not player:
+                        print("missing a player on line {} at pnl {}".format(l_num, pnl))
+                        game_book['missing_player'.encode('utf-8')] = pnl
+                    else:
+                        game_book[player] = pnl
+
+            yaml_f_name = "_".join(f.split('.')[:-1]) + ".yaml"
+            with open(os.path.join('tmp', yaml_f_name), 'wb') as yf:
+                yaml.safe_dump(game_book, yf, default_flow_style=False, allow_unicode=True)
+
